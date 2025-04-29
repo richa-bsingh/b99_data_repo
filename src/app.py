@@ -1,8 +1,8 @@
 # src/app.py
 
 import streamlit as st
-from rag_chain import answer
-from game import run_heist_game
+from src.rag_chain import answer
+from src.game import run_heist_game
 import random
 
 # Set page configuration with B99 theme
