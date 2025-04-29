@@ -3,43 +3,39 @@
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
-from langchain_chroma.vectorstores import Chroma
 
-# load persisted vector store
+# NEW imports for Qdrant
+from langchain.vectorstores import Qdrant
+from qdrant_client import QdrantClient
+
+# 1) Initialize embeddings as before
 embeddings = OpenAIEmbeddings()
-vectordb = Chroma(
-    persist_directory="db/chroma_brooklyn99",
-    embedding_function=embeddings
+
+# 2) Spin up an in-memory Qdrant client
+qdrant_client = QdrantClient(":memory:")
+
+# 3) Create (or connect to) a collection
+VECTOR_COLLECTION = "b99_precinct"
+vectorstore = Qdrant.from_client(
+    client=qdrant_client,
+    collection_name=VECTOR_COLLECTION,
+    embeddings=embeddings,
+    prefer_grpc=True,            # optional, for performance
+    distance_func="Cosine"       # or "Dot"
 )
 
-# in-character prompt template
-template = """
-You are “99 Assistant,” an in-character detective advisor.
-Use the retrieved transcript excerpts to answer the user’s question as Jake Peralta or Captain Holt,
-and when quoting, reference the episode code.
-
-{context}
-
-User Question: {question}
-
-Answer in-character, quoting the transcript.
-"""
-
+# 4) Build a RetrievalQA chain
 prompt = PromptTemplate(
-    input_variables=["context", "question"],
-    template=template
+    input_variables=["query"],
+    template="Use the Brooklyn Nine-Nine transcripts to answer: {query}"
 )
-
 qa_chain = RetrievalQA.from_chain_type(
-    llm=ChatOpenAI(model_name="gpt-4", temperature=0.7),
+    llm=ChatOpenAI(model_name="gpt-4", temperature=0.2),
     chain_type="stuff",
-    retriever=vectordb.as_retriever(search_kwargs={"k": 4}),
-    return_source_documents=False,
-    chain_type_kwargs={"prompt": prompt},    # <<< move prompt inside chain_type_kwargs
+    retriever=vectorstore.as_retriever(),
+    chain_type_kwargs={"prompt": prompt}
 )
 
-def answer(question: str) -> str:
-    return qa_chain.run(question)
-
-if __name__ == "__main__":
-    print(answer("What does Captain Holt say about teamwork?"))
+def answer(query: str) -> str:
+    """Run RetrievalQA to fetch an answer (or clue) for the given query."""
+    return qa_chain.run(query)
