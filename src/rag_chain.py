@@ -4,8 +4,7 @@ from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 from langchain.vectorstores import Chroma
-from langchain.document_loaders import DirectoryLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from src.ingest import load_transcripts_from_json
 
 import os
 
@@ -15,19 +14,16 @@ embeddings = OpenAIEmbeddings()
 # 2) Prepare vectorstore path
 persist_directory = "db/chroma_brooklyn99"
 
-# 3) Load vectorstore if exists, otherwise build it from transcripts
+# 3) Load or build vectorstore using your ingest logic
 if os.path.exists(persist_directory) and os.listdir(persist_directory):
     vectordb = Chroma(
         persist_directory=persist_directory,
         embedding_function=embeddings,
     )
 else:
-    loader = DirectoryLoader("data/transcripts", glob="*.txt")
-    docs = loader.load()
-    splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
-    texts = splitter.split_documents(docs)
+    docs = load_transcripts_from_json()
     vectordb = Chroma.from_documents(
-        texts,
+        docs,
         embedding_function=embeddings,
         persist_directory=persist_directory
     )
@@ -55,7 +51,7 @@ prompt = PromptTemplate(
     template=template
 )
 
-# 5) RAG chain
+# 5) Build RAG chain
 qa_chain = RetrievalQA.from_chain_type(
     llm=ChatOpenAI(model_name="gpt-4", temperature=0.7),
     chain_type="stuff",
