@@ -24,9 +24,10 @@ else:
     docs = load_transcripts_from_json()
     vectordb = Chroma.from_documents(
         docs,
-        embedding_function=embeddings,
+        embedding=embeddings,  # ✅ corrected here
         persist_directory=persist_directory
     )
+
 
 # 4) Prompt
 template = """
