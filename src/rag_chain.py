@@ -4,27 +4,31 @@ from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 
-# NEW imports for Qdrant
-from langchain.vectorstores import Qdrant
-from qdrant_client import QdrantClient
+# → Chroma vectorstore:
+from langchain.vectorstores import Chroma
+# Document loaders/splitters (adapt paths to your data)
+from langchain.document_loaders import DirectoryLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 
-# 1) Initialize embeddings as before
+# 1) Embeddings
 embeddings = OpenAIEmbeddings()
 
-# 2) Spin up an in-memory Qdrant client
-qdrant_client = QdrantClient(":memory:")
+# 2) Load & split your Brooklyn Nine-Nine transcripts (or whatever docs)
+loader = DirectoryLoader("data/transcripts", glob="**/*.txt")
+docs = loader.load()
+splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+texts = splitter.split_documents(docs)
 
-# 3) Create (or connect to) a collection
-VECTOR_COLLECTION = "b99_precinct"
-vectorstore = Qdrant.from_client(
-    client=qdrant_client,
-    collection_name=VECTOR_COLLECTION,
-    embeddings=embeddings,
-    prefer_grpc=True,            # optional, for performance
-    distance_func="Cosine"       # or "Dot"
+# 3) Build (or load) a Chroma collection with duckdb+parquet backend
+vectorstore = Chroma.from_documents(
+    texts,
+    embeddings,
+    persist_directory="db"           # triggers DuckDB+Parquet storage
 )
 
-# 4) Build a RetrievalQA chain
+# :contentReference[oaicite:0]{index=0}
+
+# 4) Create your RetrievalQA chain as before
 prompt = PromptTemplate(
     input_variables=["query"],
     template="Use the Brooklyn Nine-Nine transcripts to answer: {query}"
@@ -37,5 +41,4 @@ qa_chain = RetrievalQA.from_chain_type(
 )
 
 def answer(query: str) -> str:
-    """Run RetrievalQA to fetch an answer (or clue) for the given query."""
     return qa_chain.run(query)
