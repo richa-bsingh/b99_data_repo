@@ -1,32 +1,36 @@
-# src/rag_chain.py
-
+from langchain.vectorstores import Chroma
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
-from langchain.vectorstores import Chroma
-from ingest import load_transcripts_from_json
-
+from src.ingest import load_transcripts_from_json
 import os
 
-# 1) Load embeddings
+# 1. Embeddings
 embeddings = OpenAIEmbeddings()
-
-# 2) Prepare vectorstore path
 persist_directory = "db/chroma_brooklyn99"
 
-# 3) Load or build vectorstore using your ingest logic
+# 2. Manually configure client_settings to avoid SQLite
+client_settings = {
+    "chroma_db_impl": "duckdb+parquet",
+    "persist_directory": persist_directory
+}
+
+# 3. Load or build vectorstore
 if os.path.exists(persist_directory) and os.listdir(persist_directory):
     vectordb = Chroma(
         persist_directory=persist_directory,
         embedding_function=embeddings,
+        client_settings=client_settings
     )
 else:
     docs = load_transcripts_from_json()
     vectordb = Chroma.from_documents(
         docs,
-        embedding=embeddings,  # ✅ corrected here
-        persist_directory=persist_directory
+        embedding=embeddings,
+        persist_directory=persist_directory,
+        client_settings=client_settings
     )
+
 
 
 # 4) Prompt
