@@ -3,27 +3,17 @@
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
-from langchain.vectorstores import Qdrant
-from qdrant_client import QdrantClient
-from ingest import load_transcripts_from_json
+from langchain_chroma.vectorstores import Chroma
 
-# 1. Load docs + embeddings
-docs = load_transcripts_from_json()
+# 1) Load embeddings & vector store
 embeddings = OpenAIEmbeddings()
-
-# 2. Use in-memory Qdrant (no SQLite, no server needed)
-client = QdrantClient(":memory:")
-vectorstore = Qdrant.from_documents(
-    documents=docs,
-    embedding=embeddings,
-    client=client,
-    collection_name="b99"
+vectordb  = Chroma(
+    persist_directory="db/chroma_brooklyn99",
+    embedding_function=embeddings
 )
 
-# 3. Prompt template
-prompt = PromptTemplate(
-    input_variables=["context", "question"],
-    template="""
+# 2) A single, generic prompt template that handles quotes + inference
+template = """
 You are “99 Assistant,” an in‑character detective advisor (Jake Peralta or Captain Holt) for Brooklyn Nine‑Nine.
 
 Your task:
@@ -39,13 +29,17 @@ User Question:
 
 Answer in character below, mixing quotes and labeled inference as needed.
 """
+
+prompt = PromptTemplate(
+    input_variables=["context", "question"],
+    template=template
 )
 
-# 4. RAG chain
+# 3) Build the RAG chain
 qa_chain = RetrievalQA.from_chain_type(
     llm=ChatOpenAI(model_name="gpt-4", temperature=0.7),
     chain_type="stuff",
-    retriever=vectorstore.as_retriever(search_kwargs={"k": 4}),
+    retriever=vectordb.as_retriever(search_kwargs={"k": 4}),
     return_source_documents=False,
     chain_type_kwargs={"prompt": prompt},
 )
@@ -54,4 +48,5 @@ def answer(question: str) -> str:
     return qa_chain.run(question)
 
 if __name__ == "__main__":
-    print(answer("Where did Terry meet his wife?"))
+    # Quick smoke test
+    print(answer("Did Charles and Genevieve meet at the bar or at the courthouse?"))

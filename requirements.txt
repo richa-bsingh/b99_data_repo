@@ -13,6 +13,8 @@ build==1.2.2.post1
 cachetools==5.5.2
 certifi==2025.1.31
 charset-normalizer==3.4.1
+chroma-hnswlib==0.7.6
+chromadb>=0.4.22
 click==8.1.8
 coloredlogs==15.0.1
 dataclasses-json==0.5.14
@@ -47,6 +49,7 @@ jsonschema==4.23.0
 jsonschema-specifications==2024.10.1
 kubernetes==32.0.1
 langchain==0.3.23
+langchain-chroma==0.2.3
 langchain-core==0.3.54
 langchain-openai==0.3.14
 langchain-text-splitters==0.3.8
@@ -136,5 +139,3 @@ wrapt==1.17.2
 yarl==1.20.0
 zipp==3.21.0
 zstandard==0.23.0
-qdrant-client>=1.8.0
-langchain-qdrant
