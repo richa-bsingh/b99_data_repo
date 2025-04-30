@@ -3,16 +3,27 @@
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
-from langchain_chroma.vectorstores import Chroma
+from langchain.vectorstores import Chroma  # Updated import
+from chromadb.config import Settings as ChromaSettings  # New import
 
-# 1) Load embeddings & vector store
+# 1) Load embeddings
 embeddings = OpenAIEmbeddings()
-vectordb  = Chroma(
-    persist_directory="db/chroma_brooklyn99",
-    embedding_function=embeddings
+
+# 2) Force Chroma to use DuckDB+Parquet (not SQLite)
+persist_directory = "db/chroma_brooklyn99"
+
+client_settings = ChromaSettings(
+    chroma_db_impl="duckdb+parquet",
+    persist_directory=persist_directory
 )
 
-# 2) A single, generic prompt template that handles quotes + inference
+vectordb = Chroma(
+    persist_directory=persist_directory,
+    embedding_function=embeddings,
+    client_settings=client_settings
+)
+
+# 3) A single, generic prompt template that handles quotes + inference
 template = """
 You are “99 Assistant,” an in‑character detective advisor (Jake Peralta or Captain Holt) for Brooklyn Nine‑Nine.
 
@@ -35,7 +46,7 @@ prompt = PromptTemplate(
     template=template
 )
 
-# 3) Build the RAG chain
+# 4) Build the RAG chain
 qa_chain = RetrievalQA.from_chain_type(
     llm=ChatOpenAI(model_name="gpt-4", temperature=0.7),
     chain_type="stuff",
