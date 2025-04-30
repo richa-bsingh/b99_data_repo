@@ -4,7 +4,7 @@ from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 from langchain.vectorstores import Chroma
-from src.ingest import load_transcripts_from_json
+from ingest import load_transcripts_from_json
 
 import os
 
